@@ -1,6 +1,6 @@
 
 # 通用配置项
-params_cnt = 99
+params_cnt = 95
 train_set = "./face_data/trainset_female"
 test_set = "./face_data/testset_female"
 use_gpu = False
@@ -13,7 +13,7 @@ batch_size = 1
 save_freq = 10000
 prev_freq = 1000
 learning_rate = 0.1
-imitator_model = "./checkpoint/model_imitator_400000_compete_cuda.pth"    # 不做finetune，就直接写空字符串
+imitator_model = "./checkpoint/model_imitator_100000_cuda.pth"    # 不做finetune，就直接写空字符串
 
 init_step = 0
 

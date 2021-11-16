@@ -97,20 +97,20 @@ def merge_4image(image1, image2, image3, image4, size=512, show=False, transpose
     """
     size_ = (int(size / 2), int(size / 2))
     img_1 = cv2.resize(image1, size_)
-    cv2.imshow("img1", img_1)
-    cv2.waitKey()
+    # cv2.imshow("img1", img_1)
+    # cv2.waitKey()
 
     img_2 = cv2.resize(image2, size_)
-    cv2.imshow("img2", img_2)
-    cv2.waitKey()
+    # cv2.imshow("img2", img_2)
+    # cv2.waitKey()
 
     img_3 = cv2.resize(image3, size_)
-    cv2.imshow("img3", img_3)
-    cv2.waitKey()
+    # cv2.imshow("img3", img_3)
+    # cv2.waitKey()
 
     img_4 = cv2.resize(image4, size_)
-    cv2.imshow("img4", img_4)
-    cv2.waitKey()
+    # cv2.imshow("img4", img_4)
+    # cv2.waitKey()
 
     image1_ = np.append(img_1, img_2, axis=1)    # axis=1,行
     image2_ = np.append(img_3, img_4, axis=1)

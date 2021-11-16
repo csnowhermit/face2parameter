@@ -1,10 +1,10 @@
 import os
-import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tensorboardX import SummaryWriter
+from tqdm import tqdm
 
 import utils
 import config
@@ -18,6 +18,19 @@ from dataset import FaceDataset
 
 if __name__ == '__main__':
     imitator = Imitator("imitator model", args=config)
+    if len(config.imitator_model) > 0:
+        if config.use_gpu:
+            imitator_model = torch.load(config.imitator_model)
+        else:
+            imitator_model = torch.load(config.imitator_model, map_location=torch.device('cpu'))
+        op_model = {}
+        op_model = {}
+        for k in imitator_model['net'].keys():
+            op_model["model." + str(k)] = imitator_model['net'][k]
+        imitator.load_state_dict(op_model)  # 这里加载已经处理过的参数
+        print("load pretrained model success!")
+    else:
+        print("No pretrained model...")
 
     rand_input = torch.randn(config.batch_size, config.params_cnt)
     if config.use_gpu:
@@ -38,7 +51,7 @@ if __name__ == '__main__':
             params = params.cuda()
             images = images.cuda()
 
-        # 开始训练
+        # 开始训练：iterator_train步骤
         optimizer.zero_grad()
         y_ = imitator(params)
         loss = F.l1_loss(images, y_)

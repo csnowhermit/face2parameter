@@ -64,7 +64,10 @@ if __name__ == '__main__':
         imitator.cuda()
     imitator.eval()
     imitator_model = torch.load(config.imitator_model, map_location=torch.device('cpu'))
-    # imitator.load_state_dict(imitator_model['net'])
+    op_model = {}
+    for k in imitator_model['net'].keys():
+        op_model["model." + str(k)] = imitator_model['net'][k]
+    imitator.load_state_dict(op_model)    # 这里加载已经处理过的参数
 
 
     # 图片读取
@@ -129,7 +132,7 @@ if __name__ == '__main__':
 
         t_params.data = t_params.data - config.eval_learning_rate * t_params.grad.data
         t_params.data = t_params.data.clamp(0., 1.)
-        print(i, t_params.grad, t_params.data)
+        # print(i, t_params.grad, t_params.data)
 
         # one-hot编码：argmax处理（这里没搞清楚定义方法但没返回值的作用，直接写方法的内容在这里处理）
         # def argmax_params(params, start, count)
