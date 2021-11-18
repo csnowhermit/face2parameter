@@ -2,6 +2,7 @@ import os
 import cv2
 import struct
 import numpy as np
+from PIL import Image
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -166,8 +167,8 @@ def vis_parsing_maps(im, parsing, stride):
                    [0, 170, 255], [255, 255, 0], [255, 255, 85], [255, 255, 170], [255, 0, 255], [255, 85, 255],
                    [255, 170, 255], [0, 255, 255], [85, 255, 255], [170, 255, 255]]
     """
-    # 只显示鼻子 眼睛 眉毛 嘴巴
-    part_colors = [[255, 255, 255], [255, 255, 255], [25, 170, 0], [255, 170, 0], [254, 0, 170], [254, 0, 170],
+    # 只显示脸 鼻子 眼睛 眉毛 嘴巴
+    part_colors = [[255, 255, 255], [255, 85, 0], [25, 170, 0], [255, 170, 0], [254, 0, 170], [254, 0, 170],
                    [255, 255, 255],
                    [255, 255, 255], [255, 255, 255], [255, 255, 255], [0, 0, 254], [85, 0, 255], [170, 0, 255],
                    [0, 85, 255],
@@ -234,14 +235,16 @@ def eval_output(imitator, x, refer, step, prev_path, L2_c):
     y_ = y_.astype(np.uint8)    # [512, 512, 3]
     im1 = L2_c[0]    # [512, 512]
     im2 = L2_c[1]    # [512, 512]
-    np_im1 = im1.cpu().detach().numpy()
-    np_im2 = im2.cpu().detach().numpy()
-    f_im1 = fill_gray(np_im1)    # [512, 512, 3]
-    f_im2 = fill_gray(np_im2)    # [512, 512, 3]
+    # np_im1 = im1.cpu().detach().numpy()
+    # np_im2 = im2.cpu().detach().numpy()
+    # f_im1 = fill_gray(np_im1)    # [512, 512, 3]，灰度图
+    # f_im2 = fill_gray(np_im2)    # [512, 512, 3]
+    f_im1 = im1  # [512, 512, 3]，这里直接显示原图
+    f_im2 = im2  # [512, 512, 3]
 
     # refer 改为channel last的
     refer = np.transpose(refer, [1, 2, 0])    # [512, 512, 3]
-
+    # print("f_im1:", type(f_im1), f_im1.shape)
     image_ = merge_4image(refer, y_, f_im1, f_im2, transpose=False)
     path = os.path.join(prev_path, "eval_{0}.jpg".format(step))
     cv2.imwrite(path, image_)
@@ -307,11 +310,32 @@ def eval_plot(losses):
         for it in losses:
             y1.append(it[0])
             y2.append(it[1])
-        plt.plot(x, y1, color='r', label='l1')
-        plt.plot(x, y2, color='g', label='l2')
+        plt.plot(x, y1, color='r', label='1-L1')
+        plt.plot(x, y2, color='g', label='L2')
         plt.ylabel("loss")
         plt.xlabel('step')
         plt.legend()
         path = os.path.join(config.prev_path, "loss.png")
         plt.savefig(path)
         plt.close('all')
+
+'''
+    dlib检测68个关键点
+    :param img BGR三通道图
+'''
+def detect_face_keypoint(img):
+    # 取灰度
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    rects = config.detector(img_gray, 0)
+    for i in range(len(rects)):
+        landmarks = np.matrix([[p.x, p.y] for p in config.predictor(img, rects[i]).parts()])
+        for idx, point in enumerate(landmarks):
+            pos = (point[0, 0], point[0, 1])
+            print(idx, pos)
+
+            cv2.circle(img, pos, 5, color=(0, 255, 0))
+            # 利用cv2.putText输出1-68
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(img, str(idx + 1), pos, font, 0.8, (0, 0, 255), 1, cv2.LINE_AA)
+    cv2.imshow("img", img)
+    cv2.waitKey(0)
