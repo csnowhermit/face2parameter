@@ -14,7 +14,7 @@ batch_size = 1
 save_freq = 10000
 prev_freq = 1000
 learning_rate = 0.1
-imitator_model = "./checkpoint/imitator.pth"    # 不做finetune，就直接写空字符串
+imitator_model = "./checkpoint/imitator_gitopen.pth"    # 不做finetune，就直接写空字符串
 
 init_step = 0
 

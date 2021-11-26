@@ -130,8 +130,12 @@ dmypy.json
 .idea/
 *.ipynb
 
-dat/
+
 logs/
 output/
 face_data/
-checkpoint/
+checkpoint/shape_predictor_68_face_landmarks.dat
+checkpoint/79999_iter.pth
+checkpoint/resnet18-5c106cde.pth
+checkpoint/LightCNN_29Layers_V2_checkpoint.pth.tar
+checkpoint/rtnet50-fcn-14.torch

@@ -339,3 +339,19 @@ def detect_face_keypoint(img):
             cv2.putText(img, str(idx + 1), pos, font, 0.8, (0, 0, 255), 1, cv2.LINE_AA)
     cv2.imshow("img", img)
     cv2.waitKey(0)
+
+'''
+    解决argmax()不可微的问题，自定义ArgMax
+    原理：argmax = softmax + c，c为常数
+'''
+class ArgMax(torch.autograd.Function):
+    @staticmethod
+    def forward(input):
+        idx = torch.argmax(input, 0)
+        output = torch.zeros_like(input)
+        output.scatter(1, idx, 1)
+        return output
+
+    @staticmethod
+    def backward(grad_output):
+        return grad_output
