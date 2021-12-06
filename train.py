@@ -1,15 +1,18 @@
 import os
+import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from tensorboardX import SummaryWriter
+import torchvision.utils as vutils
+from torch.utils.data import DataLoader
 from tqdm import tqdm
+import numpy as np
 
 import utils
 import config
 from imitator import Imitator
-from dataset import FaceDataset
+from dataset import Imitator_Dataset
 
 '''
     训练
@@ -17,82 +20,78 @@ from dataset import FaceDataset
 '''
 
 if __name__ == '__main__':
-    imitator = Imitator("imitator model", args=config)
+    imitator = Imitator("imitator model")
     if len(config.imitator_model) > 0:
         if config.use_gpu:
             imitator_model = torch.load(config.imitator_model)
         else:
             imitator_model = torch.load(config.imitator_model, map_location=torch.device('cpu'))
-        op_model = {}
-        op_model = {}
-        for k in imitator_model['net'].keys():
-            op_model["model." + str(k)] = imitator_model['net'][k]
-        imitator.load_state_dict(op_model)  # 这里加载已经处理过的参数
         print("load pretrained model success!")
     else:
         print("No pretrained model...")
 
-    rand_input = torch.randn(config.batch_size, config.params_cnt)
-    if config.use_gpu:
-        rand_input = rand_input.cuda()
-
-    writer = SummaryWriter(comment='imitator', log_dir=config.path_tensor_log)
+    imitator = imitator.to(config.device)
+    if config.device.type == 'cuda' and config.num_gpu > 1:
+        imitator = nn.DataParallel(imitator, list(range(config.num_gpu)))
 
     imitator.train()
     optimizer = optim.Adam(imitator.parameters(), lr=config.learning_rate)
 
-    dataset = FaceDataset(config, mode="train")
-    init_step = config.init_step
-    total_steps = config.total_steps
-    progress = tqdm(range(init_step, total_steps + 1), initial=init_step, total=total_steps)
+    train_imitator_Dataset = Imitator_Dataset(config.train_params_root, config.image_root)
+    train_imitator_dataloader = DataLoader(train_imitator_Dataset, batch_size=config.batch_size, shuffle=True)
+
+    test_imitator_Dataset = Imitator_Dataset(config.test_params_root, config.image_root)
+    test_imitator_dataloader = DataLoader(test_imitator_Dataset, batch_size=config.batch_size, shuffle=True)
+
+    progress = tqdm(range(config.init_step, config.total_steps + 1), initial=config.init_step, total=config.total_steps)
+
+    train_loss = 999999  # 记录当前train loss
+
     for step in progress:
-        names, params, images = dataset.get_batch(batch_size=config.batch_size, edge=False)
-        if config.use_gpu:
-            params = params.cuda()
-            images = images.cuda()
+        for i, content in enumerate(train_imitator_dataloader):
+            x, y = content[:]
+            if config.use_gpu:
+                x = x.to(config.device)
+                y = y.to(config.device)
 
-        # 开始训练：iterator_train步骤
-        optimizer.zero_grad()
-        y_ = imitator(params)
-        loss = F.l1_loss(images, y_)
-        loss.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            y_ = imitator(x)
+            loss = F.l1_loss(y, y_)
+            loss.backward()
+            optimizer.step()
 
-        loss_ = loss.cpu().detach().numpy()    # 转到cpu上
-        progress.set_description("loss: {:.3f}".format(loss_))
-        writer.add_scalar('imitator/loss', loss_, step)
+            info = "step:{0:d} batch:{1:d} Loss:{2:.6f}".format(step, i, loss)
+            print(info)
+            progress.set_description(info)
+        curr_train_loss = loss.item()
+        if curr_train_loss < train_loss:
+            train_loss = curr_train_loss
 
-        # 每隔prev_step步显示
-        if (step + 1) % config.prev_freq == 0:
-            path = "{1}/imit_{0}.jpg".format(step + 1, config.prev_path)
+        # if (step + config.init_step + 1) % config.save_freq == 0:
+        if True:
+            imitator.eval()
+            test_losses = []
+            for i, content in enumerate(test_imitator_dataloader):
+                x, y = content[:]
+                if config.use_gpu:
+                    x = x.to(config.device)
+                    y = y.to(config.device)
 
-            # 保存快照
-            utils.capture(path, images, y_, config.faceparse_checkpoint, config.use_gpu)
-            x = step / float(total_steps)
-            lr = config.learning_rate * (x ** 2 - 2 * x + 1) + 2e-3
+                y_ = imitator(x)    # BCHW
+                test_loss = F.l1_loss(y, y_)
+                test_losses.append(test_loss.item())
 
-            # 动态更新lr，加快训练速度
-            for group in optimizer.param_groups:
-                group['lr'] = lr
+                if i == 0:
+                    if os.path.exists(config.prev_path) is False:
+                        os.makedirs(config.prev_path)
+                    # utils.capture(path, x, y_, config.faceparse_checkpoint, config.use_gpu)
 
-            writer.add_scalar('imitator/learning rate', lr, step)
+                    label_show = np.transpose(vutils.make_grid(y.to(config.device), nrow=4, padding=2, normalize=True).cpu().numpy(),(1,2,0)) * 255.
+                    cv2.imwrite(os.path.join(config.prev_path, "show_label_%d.jpg" % step), cv2.cvtColor(label_show, cv2.COLOR_RGB2BGR))
 
-            # 把imitator的权重以图片的方式上传到tensorboard
-            for module in imitator._modules.values():
-                if isinstance(module, nn.Sequential):
-                    for it in module._modules.values():
-                        if isinstance(it, nn.ConvTranspose2d):
-                            if it.in_channels == 64 and it.out_channels == 64:
-                                name = "weight_{0}_{1}".format(it.in_channels, it.out_channels)
-                                weights = it.weight.reshape(4, 64, -1)
-                                writer.add_image(name, weights, step)
-        # 每隔save_freq步保存
-        if (step + 1) % config.save_freq == 0:
-            state = {'net': imitator.state_dict(),
-                     'optimizer': optimizer.state_dict(),
-                     'epoch': step}
-            if os.path.exists(config.model_path) is False:
-                os.makedirs(config.model_path)
-            ext = "cuda" if config.use_gpu else "cpu"
-            torch.save(state, '{1}/imitator_{0}_{2}.pth'.format(step + 1, config.model_path, ext))
-    writer.close()
+                    fake_show = np.transpose(vutils.make_grid(y_.to(config.device), nrow=4, padding=2, normalize=True).detach().cpu().numpy(),(1,2,0)) * 255.
+                    cv2.imwrite(os.path.join(config.prev_path, "show_fake_%d.jpg" % step), cv2.cvtColor(fake_show, cv2.COLOR_RGB2BGR))
+
+            test_avg_loss = np.mean(test_losses)
+            torch.save(imitator.state_dict(), os.path.join(config.model_path, "imitator-%d-%.3f-%.3f.pth" % (step, curr_train_loss, test_avg_loss)))
+
