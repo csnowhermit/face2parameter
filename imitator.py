@@ -13,7 +13,7 @@ import config
 '''
 
 class Imitator(nn.Module):
-    def __init__(self, is_bias=True):
+    def __init__(self, is_bias=False):
         super(Imitator, self).__init__()
 
         self.model = nn.Sequential(
