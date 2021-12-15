@@ -20,7 +20,6 @@ import torchvision.utils as vutils
 '''
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default='mnist', help='cifar10 | lsun | mnist |imagenet | folder | lfw | fake')
 parser.add_argument('--dataroot', default='F:/BaiduNetdiskDownload/faces/', required=False, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=0)
 parser.add_argument('--batchSize', type=int, default=16, help='input batch size')
@@ -38,7 +37,6 @@ parser.add_argument('--netG', default='', help="path to netG (to continue traini
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--outf', default='./output/', help='folder to output images and model checkpoints')
 parser.add_argument('--manualSeed', type=int, help='manual seed')
-parser.add_argument('--classes', default='bedroom', help='comma separated list of classes for the lsun data set')
 
 opt = parser.parse_args()
 print(opt)
@@ -59,8 +57,8 @@ cudnn.benchmark = True
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-if opt.dataroot is None and str(opt.dataset).lower() != 'fake':
-    raise ValueError("`dataroot` parameter is required for dataset \"%s\"" % opt.dataset)
+if opt.dataroot is None:
+    raise ValueError("`dataroot` parameter is required ")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.is_available())
@@ -218,24 +216,22 @@ for epoch in range(opt.epochs):
         ###########################
         # train with real
         netD.zero_grad()
-        # real_cpu = data[0].to(device)
-        # batch_size = real_cpu.size(0)
         batch_size = data.shape[0]
-        label = torch.full((batch_size,), real_label, dtype=torch.float32, device=device)
+        label = torch.full((batch_size,), real_label, dtype=torch.float32, device=device)    # 这里label为1，真
 
         output = netD(data)
-        errD_real = criterion(output, label)    # 真的判断为真
+        errD_real = criterion(output, label)    # 将真判断为真。这里是判别器的损失，output越接近1，损失越小
         errD_real.backward()
         D_x = output.mean().item()
 
         # train with fake
         noise = torch.randn(batch_size, nz, 1, 1, device=device)
         fake = netG(noise)
-        label.fill_(fake_label)
-        output = netD(fake.detach())
-        errD_fake = criterion(output, label)    # 假的判断为假
+        label.fill_(fake_label)    # 这里label为0，假
+        output = netD(fake.detach())    # output越接近0，损失越小
+        errD_fake = criterion(output, label)    # 假的判断为假。这里是判别器的损失，output越为假，损失越小
         errD_fake.backward()
-        D_G_z1 = output.mean().item()
+        D_G_z1 = output.mean().item()    # 越小越好
         errD = errD_real + errD_fake
         optimizerD.step()
 
@@ -243,11 +239,11 @@ for epoch in range(opt.epochs):
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
         netG.zero_grad()
-        label.fill_(real_label)  # 对于生成器，生成的要尽可能为真
-        output = netD(fake)    # 对于判别器，生成的假的要预测为假
-        errG = criterion(output, label)
+        label.fill_(real_label)  # 这里标签为1，真
+        output = netD(fake)    # 对于判别器，要尽可能将生成器生成的判断为假；
+        errG = criterion(output, label)    # 这里表征生成器的生成损失，errG越小，说明生成器生成的越逼真。计算output（判别器的输出，越接近0说明判别器越好）与label（生成器给出的标签，越接近1说明生成器越好）的损失
         errG.backward()
-        D_G_z2 = output.mean().item()
+        D_G_z2 = output.mean().item()    # 越小越好
         optimizerG.step()
 
         print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f'
