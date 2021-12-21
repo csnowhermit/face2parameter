@@ -9,22 +9,27 @@ import config
 
 
 class Imitator_Dataset(Dataset):
-    def __init__(self, params_root, image_root):
+    def __init__(self, params_root, image_root, mode="train"):
         self.image_root = image_root
-        with open(params_root, 'r', encoding='utf-8') as f:
+        self.mode = mode
+        with open(params_root, encoding='utf-8') as f:
             self.params = json.load(f)
-        self.fileList = [k for k in self.params.keys()]
 
     def __getitem__(self, index):
-        file = self.fileList[index]
-        img = Image.open(os.path.join(self.image_root, file)).convert("RGB")
+        if self.mode == "val":
+            img = Image.open(os.path.join(self.image_root, '%d.png' % (index + 54000))).convert("RGB")
+            param = torch.tensor(self.params['%d.png' % (index + 54000)])
+        else:
+            img = Image.open(os.path.join(self.image_root, '%d.png' % index)).convert("RGB")
+            param = torch.tensor(self.params['%d.png' % index])
         img = T.ToTensor()(img)
-        param = torch.tensor(self.params['%s' % (file)])  # 一般做法是init里获取文件列表，按照index下标从文件列表中取文件名
-
-        return (param, img)
+        return param, img
 
     def __len__(self):
-        return len(self.params.keys())
+        if self.mode == "train":
+            return 54000
+        else:
+            return 6000
 
 
 if __name__ == '__main__':

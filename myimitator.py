@@ -1,87 +1,17 @@
-from __future__ import print_function
-import os
-import random
-import torch
-import torch.nn as nn
-import torch.nn.parallel
-import torch.nn.functional as F
-from torch.optim import lr_scheduler
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
-import torch.utils.data
-from torchvision import transforms as T
-from torch.utils.data import DataLoader, Dataset
-import json
-import torchvision.utils as vutils
-import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image
-import time
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import os
+import cv2
 import copy
 import math
+import json
+import torch
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
 
-'''
-    在服务器上训练只需上传这一个文件即可
-'''
-
-# Set random seed for reproducibility
-manualSeed = 999
-# manualSeed = random.randint(1, 10000) # use if you want new results
-print("Random Seed: ", manualSeed)
-random.seed(manualSeed)
-torch.manual_seed(manualSeed)
-
-# Batch size during training
-batch_size = 16
-image_size = 512
-num_epochs = 1000
-lr = 0.01
-ngpu = 2
-
-image_root = "F:/dataset/face_20211203_20000_nojiemao/"
-
-class Imitator_Dataset(Dataset):
-    def __init__(self, params_root, image_root, mode="train"):
-        self.image_root = image_root
-        self.mode = mode
-        with open(params_root, encoding='utf-8') as f:
-            self.params = json.load(f)
-
-    def __getitem__(self, index):
-        if self.mode == "val":
-            img = Image.open(os.path.join(self.image_root, '%d.png' % (index + 18000))).convert("RGB")
-            param = torch.tensor(self.params['%d.png' % (index + 18000)])
-        else:
-            img = Image.open(os.path.join(self.image_root, '%d.png' % index)).convert("RGB")
-            param = torch.tensor(self.params['%d.png' % index])
-        img = T.ToTensor()(img)
-        return param, img
-
-    def __len__(self):
-        if self.mode == "train":
-            return 18000
-        else:
-            return 2000
-
-
-train_dataset = Imitator_Dataset(image_root + "param.json", image_root + "face_train/", mode="train")
-val_dataset = Imitator_Dataset(image_root + "param.json", image_root + "face_val/", mode="val")
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-# real_batch = next(iter(val_dataloader))
-# plt.figure(figsize=(4, 4))
-# plt.axis("off")
-# plt.title("Training Images")
-# plt.imshow(np.transpose(vutils.make_grid(real_batch[1].to(device)[:16], nrow=4, padding=2, normalize=True).cpu(), (1, 2, 0)))
-# plt.show()
-# vutils.save_image(vutils.make_grid(real_batch[1].to(device)[:16], nrow=4, padding=2, normalize=True).cpu(), "./a.jpg")
-
-
+import utils
+import config
 
 '''
     自定义Imitator
@@ -250,7 +180,7 @@ class MyImitator(nn.Module):
         super(MyImitator, self).__init__()
 
         # 1.加载配置文件
-        with open("./checkpoint/myimitator-512.json", "r", encoding='utf-8') as reader:
+        with open(config.config_jsonfile, "r", encoding='utf-8') as reader:
             text = reader.read()
         self.conf = BigGANConfig()
         for key, value in json.loads(text).items():
@@ -260,7 +190,7 @@ class MyImitator(nn.Module):
         # self.embeddings = nn.Linear(config.num_classes, config.continuous_params_size, bias=False)
 
         ch = self.conf.channel_width
-        condition_vector_dim = 223
+        condition_vector_dim = config.continuous_params_size
 
         self.gen_z = snlinear(in_features=condition_vector_dim, out_features=4*4*16*ch, eps=self.conf.eps)
         layers = []
@@ -370,72 +300,15 @@ class BigGANConfig(object):
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
-imitator = MyImitator()
-if device.type == 'cuda':
-    imitator = nn.DataParallel(imitator)
-imitator.to(device)
+if __name__ == '__main__':
+    # # d1 = nn.Linear(20, 40)
+    # d1 = nn.Conv2d(10, 20, kernel_size=3, stride=1, padding=0, groups=10)
+    # d2 = nn.utils.spectral_norm(d1)
+    # print(d2)
+    # print(d2.weight_u.size())
 
-# Initialize BCELoss function
-criterion = nn.L1Loss()
-
-# optimizer = optim.SGD(imitator.parameters(), lr=lr, momentum=0.9)
-optimizer = optim.Adam(params=imitator.parameters(), lr=5e-5,
-                           betas=(0.0, 0.999), weight_decay=0,
-                           eps=1e-8)
-
-# 每50个epoch衰减10%
-# scheduler = lr_scheduler.StepLR(optimizer, step_size=len(train_dataloader) * 50, gamma=0.9)
-
-total_step = len(train_dataloader)
-imitator.train()
-train_loss_list = []
-val_loss_list = []
-for epoch in range(num_epochs):
-    start = time.time()
-    for i, (params, img) in enumerate(train_dataloader):
-        optimizer.zero_grad()
-        params = params.to(device)
-        img = img.to(device)
-        outputs = imitator(params)
-        loss = criterion(outputs, img)
-        loss.backward()
-        optimizer.step()
-        # scheduler.step()
-        train_loss_list.append(loss.item())
-
-        if (i % 10) == 0:
-            print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, spend time: {:.4f}'
-                  .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(), time.time() - start))
-            start = time.time()
-
-    imitator.eval()
-    with torch.no_grad():
-        val_loss = 0
-        for i, (params, img) in enumerate(val_dataloader):
-            params = params.to(device)
-            img = img.to(device)
-            outputs = imitator(params)
-            loss = criterion(outputs, img)
-            val_loss += loss.item()
-            if i == 1:
-                vutils.save_image(
-                    vutils.make_grid(outputs.to(device)[:16], nrow=4, padding=2, normalize=True).cpu(),
-                    image_root + "gen_image/%d.jpg" % epoch)
-        val_loss_list.append(val_loss)
-
-        print('Epoch [{}/{}], val_loss: {:.6f}'
-              .format(epoch + 1, num_epochs, val_loss))
-        if (epoch % 10) == 0 or (epoch+1) == num_epochs:
-            torch.save(imitator.state_dict(),
-                       image_root + 'model/epoch_{}_val_loss_{:.6f}_file.pt'.format(
-                           epoch, val_loss))
-        if epoch >= 1:
-            plt.figure()
-            plt.subplot(121)
-            plt.plot(np.arange(0, len(train_loss_list)), train_loss_list)
-            plt.subplot(122)
-            plt.plot(np.arange(0, len(val_loss_list)), val_loss_list)
-            plt.savefig(image_root + "metrics.jpg")
-            plt.close("all")
-
-    imitator.train()
+    t_params = torch.full([1, config.continuous_params_size], 0.5, dtype=torch.float32)
+    imitator = MyImitator()
+    print(imitator)
+    output = imitator(t_params)
+    print(output.shape)    # [1, 3, 512, 512]
