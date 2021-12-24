@@ -14,7 +14,7 @@ from torchvision import datasets
 '''
     LSGAN：最小二乘生成对抗损失
     GAN存在的通用问题：生成图片质量不高；训练过程不稳定
-    传统做法：传统gan里用的BCELoss，见tradition_gan.py
+    传统做法：
         1.采用交叉熵损失（只看True/False）。使得生成器不再优化被判别器识别为True的fake image，即使生成的图片离判别器的决策边界很远，即离真实数据很远。
           这意味着生成器生成的图片质量并不高。为什么生成器不再优化生成图片？因为已经完成了目标——即骗过判别器，所以这时交叉熵已经很小了。
           而最小二乘法要求，骗过判别器的前提下还得让生成器把离决策边界比较远的图片拉向决策边界。
@@ -30,7 +30,7 @@ batch_size=64
 learning_rate=0.0002
 latent_dim=100    # 从100维向量开始生成图片
 image_size=32
-sample_interval=1000    # 每隔1000个batch保存一下
+sample_interval=100    # 每隔1000个batch保存一下
 save_sample_path = "../output/images/"    # 样例图片保存路径
 if os.path.exists("../output/images/") is False:
     os.makedirs("../output/images/")
