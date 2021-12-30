@@ -6,6 +6,9 @@ import config
 '''
     Translator网络，从face-recognition到params
     网络结构参考第二篇论文：《Fast and Robust Face-to-Parameter Translation for Game Character Auto-Creation》
+    keypoint：
+    1.use the Adam optimizer to train T with the learning rate of 1e-4 and max-iteration of 20 epochs.
+    2.the learning rate decay is set to 10% per 50 epochs.（参照imitator训练策略，但一般用不上，epoch=40时就可以停止训练了）
 '''
 class Translator(nn.Module):
     def __init__(self, isBias=False):
