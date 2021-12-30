@@ -31,18 +31,18 @@ class Translator(nn.Module):
 class ResAttention(nn.Module):
     def __init__(self, isBias=False):
         super(ResAttention, self).__init__()
-        self.fc1 = nn.Linear(512, 512, bias=isBias)
-        self.bn1 = nn.BatchNorm1d(512)
+        self.fc1 = nn.Linear(512, 1024, bias=isBias)
+        self.bn1 = nn.BatchNorm1d(1024)
         self.relu1 = nn.ReLU()
 
-        self.fc2 = nn.Linear(512, 512, bias=isBias)
+        self.fc2 = nn.Linear(1024, 512, bias=isBias)
         self.bn2 = nn.BatchNorm1d(512)
 
         # 这里开始分支
-        self.fc3 = nn.Linear(512, 512, bias=isBias)
+        self.fc3 = nn.Linear(512, 16, bias=isBias)
         self.relu3 = nn.ReLU()
 
-        self.fc4 = nn.Linear(512, 512, bias=isBias)
+        self.fc4 = nn.Linear(16, 512, bias=isBias)
         self.sigmoid4 = nn.Sigmoid()
 
         # 这里开始做点乘
