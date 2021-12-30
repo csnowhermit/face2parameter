@@ -400,14 +400,13 @@ for epoch in range(num_epochs):
         loss = criterion(outputs, img)
         loss.backward()
         optimizer.step()
-        # scheduler.step()
-        train_loss_list.append(loss.item())
 
         if (i % 10) == 0:
             print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, spend time: {:.4f}'
                   .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(), time.time() - start))
             start = time.time()
 
+    train_loss_list.append(loss.item())
     imitator.eval()
     with torch.no_grad():
         val_loss = 0
@@ -421,7 +420,7 @@ for epoch in range(num_epochs):
                 vutils.save_image(
                     vutils.make_grid(outputs.to(device)[:16], nrow=4, padding=2, normalize=True).cpu(),
                     image_root + "gen_image/%d.jpg" % epoch)
-        val_loss_list.append(val_loss)
+        val_loss_list.append(val_loss / len(val_dataloader))
 
         print('Epoch [{}/{}], val_loss: {:.6f}'
               .format(epoch + 1, num_epochs, val_loss))
