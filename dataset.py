@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import torch
 from PIL import Image
 from torchvision import transforms as T
@@ -7,7 +8,9 @@ from torch.utils.data import DataLoader, Dataset
 
 import config
 
-
+'''
+    Imitator Dataset
+'''
 class Imitator_Dataset(Dataset):
     def __init__(self, params_root, image_root, mode="train"):
         self.image_root = image_root
@@ -31,9 +34,34 @@ class Imitator_Dataset(Dataset):
         else:
             return 6000
 
+############################################################
+'''
+    Translator Dataset
+'''
+def split_dataset(datapath):
+    trainlist, vallist = [], []
+    for file in os.listdir(datapath):
+        if random.randint(0, 10) <= 8:
+            trainlist.append(os.path.join(datapath, file))
+        else:
+            vallist.append(os.path.join(datapath, file))
+    return trainlist, vallist
+
+class Translator_Dataset(Dataset):
+    def __init__(self, img_list):
+        self.img_list = img_list
+
+    def __getitem__(self, index):
+        img = Image.open(self.img_list[index]).convert("RGB").resize((512, 512), Image.BILINEAR)
+        img = T.ToTensor()(img)
+        return img
+
+    def __len__(self):
+        return len(self.img_list)
+
 
 if __name__ == '__main__':
-    train_imitator_Dataset = Imitator_Dataset(config.train_params_root, config.image_root)
+    train_imitator_Dataset = Imitator_Dataset(config.params_root, config.image_root)
     train_imitator_dataloader = DataLoader(train_imitator_Dataset, batch_size=16, shuffle=True)
     for i, content in enumerate(train_imitator_dataloader):
         x, y = content[:]

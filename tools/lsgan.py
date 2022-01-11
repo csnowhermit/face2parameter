@@ -16,10 +16,10 @@ from torchvision import datasets
     GAN存在的通用问题：生成图片质量不高；训练过程不稳定
     传统做法：
         1.采用交叉熵损失（只看True/False）。使得生成器不再优化被判别器识别为True的fake image，即使生成的图片离判别器的决策边界很远，即离真实数据很远。
-          这意味着生成器生成的图片质量并不高。为什么生成器不再优化生成图片？因为已经完成了目标——即骗过判别器，所以这时交叉熵已经很小了。
+          这意味着生成器生成的图片质量并不高。为什么生成器不再优化生成图片？因为已经完成了目标——即骗过判别器，所以这时交叉熵损失已经很小了。
           而最小二乘法要求，骗过判别器的前提下还得让生成器把离决策边界比较远的图片拉向决策边界。
         2.sigmoid函数，输入过大或过小时，都会造成梯度消失；而最小二乘只有x=1时梯度为0。
-    传统GAN与LSGAN做法类似，只需将损失函数换成torch.nn.BCELoss()即可，如下：
+    LSGAN做法：与传统做法类似，只需将损失函数换成torch.nn.BCELoss()即可，如下：
         adversarial_loss = torch.nn.BCELoss()，若报错RuntimeError: all elements of input should be between 0 and 1，可采用如下：
         adversarial_loss = torch.nn.BCEWithLogitsLoss()
 '''

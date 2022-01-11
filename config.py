@@ -27,7 +27,7 @@ save_freq = 10
 prev_freq = 10
 learning_rate = 1
 # imitator_model = "./checkpoint/imitator.pth"    # 不做finetune，就直接写空字符串
-imitator_model = "./checkpoint/epoch_250.pt"
+imitator_model = "./checkpoint/epoch_130_0.666491.pt"
 # imitator_model = ""
 
 prev_path = "./output/preview"
@@ -43,7 +43,7 @@ eval_prev_freq = 10
 
 # 人脸语义分割
 faceparse_backbone = 'mobilenetv2'
-faceparse_checkpoint = "./checkpoint/faceseg_179_0.050777_0.065476_0.842724.pth"
+faceparse_checkpoint = "./checkpoint/faceseg_65_0.030560_0.025751_0.827335-7.pth"
 num_classes = 7
 output_stride = 16
 pretrained = True
