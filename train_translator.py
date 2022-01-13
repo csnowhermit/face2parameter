@@ -19,8 +19,7 @@ from lightcnn import LightCNN_29Layers_v2
 from face_parser import load_model
 from translator import Translator
 
-# root_path = "./data/"
-root_path = "F:/dataset/CelebAMask-HQ/align/"    # 训练前要先做对齐
+root_path = "./data/"
 r1 = 0.01
 r2 = 1
 r3 = 1
@@ -28,10 +27,6 @@ r3 = 1
 def criterion_lightcnn(x1, x2):
     distance = torch.cosine_similarity(x1, x2)[0]
     return 1 - distance
-
-'''
-    完整版训练translator
-'''
 
 if __name__ == '__main__':
     # 1.初始化并加载imitator
@@ -41,7 +36,7 @@ if __name__ == '__main__':
             imitator_model = torch.load(config.imitator_model)
         else:
             imitator_model = torch.load(config.imitator_model, map_location=torch.device('cpu'))
-        print("load pretrained model success!")
+        print("load Imitator pretrained model success!")
     else:
         print("No pretrained model...")
 
@@ -76,6 +71,10 @@ if __name__ == '__main__':
     translator.to(config.device)
 
     # 4.加载face_parser
+    transform = T.Compose([
+        T.Normalize(mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]),
+    ])    # 语义分割之前要先做Normalize
     deeplab = load_model('mobilenetv2', num_classes=config.num_classes, output_stride=config.output_stride)
     checkpoint = torch.load(config.faceparse_checkpoint, map_location=config.device)
     if config.faceparse_backbone == 'resnet50':
@@ -93,7 +92,6 @@ if __name__ == '__main__':
     # 损失
     criterion_param = nn.L1Loss()
     criterion_parser = nn.L1Loss()
-    # criterion_lightcnn = torch.cosine_similarity
 
     train_dataset = Translator_Dataset(trainlist)
     val_dataset = Translator_Dataset(vallist)
@@ -115,14 +113,14 @@ if __name__ == '__main__':
             imgs = imgs.to(config.device)
 
             # 先做语义分割
-            parse = deeplab(imgs)
+            parse = deeplab(transform(imgs))
 
             imgs = T.Grayscale()(F.interpolate(imgs, (128, 128), mode='bilinear'))
             _, features = lightcnn(imgs)
             outputs = translator(features)    # 223
 
             gen_img = imitator(outputs)    # 生成图像
-            gen_parse = deeplab(gen_img)
+            gen_parse = deeplab(transform(gen_img))
             gen_img = T.Grayscale()(F.interpolate(gen_img, (128, 128), mode='bilinear'))
 
             _, gen_features = lightcnn(gen_img)

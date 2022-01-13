@@ -2,7 +2,7 @@ import dlib
 import torch
 
 # 通用配置项
-continuous_params_size = 223    # 连续参数个数，github开源的是95个参数
+continuous_params_size = 159    # 连续参数个数，github开源的是95个参数
 # image_root = "F:/dataset/face_simple/face/"
 # train_params_root = "F:/dataset/face_simple/train_param.json"
 # test_params_root = "F:/dataset/face_simple/test_param.json"
@@ -27,7 +27,7 @@ save_freq = 10
 prev_freq = 10
 learning_rate = 1
 # imitator_model = "./checkpoint/imitator.pth"    # 不做finetune，就直接写空字符串
-imitator_model = "./checkpoint/epoch_130_0.666491.pt"
+imitator_model = "./checkpoint/epoch_340_0.434396.pt"
 # imitator_model = ""
 
 prev_path = "./output/preview"
@@ -38,12 +38,12 @@ model_path = "./output/imitator"
 total_eval_steps = 50
 eval_alpha = 0.1    # Ls = alpha * L1 + L2
 eval_learning_rate = 1
-eval_prev_freq = 10
+eval_prev_freq = 1
 
 
 # 人脸语义分割
 faceparse_backbone = 'mobilenetv2'
-faceparse_checkpoint = "./checkpoint/faceseg_65_0.030560_0.025751_0.827335-7.pth"
+faceparse_checkpoint = "./checkpoint/faceseg_179_0.050777_0.065476_0.842724_withface7.pth"
 num_classes = 7
 output_stride = 16
 pretrained = True

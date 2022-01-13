@@ -140,4 +140,6 @@ checkpoint/resnet18-5c106cde.pth
 checkpoint/LightCNN_29Layers_V2_checkpoint.pth.tar
 checkpoint/rtnet50-fcn-14.torch
 checkpoint/epoch_130_0.666491.pt
+checkpoint/epoch_340_0.434396.pt
 checkpoint/faceseg_65_0.030560_0.025751_0.827335-7.pth
+checkpoint/faceseg_179_0.050777_0.065476_0.842724_withface7.pth

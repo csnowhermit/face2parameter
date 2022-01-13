@@ -236,11 +236,11 @@ def face_Align(Base_path, cover_path):
 
 FEATHER_AMOUNT = 19
 
-template_path = './dat/gen_avg_face.jpg'    # 模板
+template_path = './dat/avg_face.jpg'    # 模板
 if __name__ == '__main__':
-    cover_path = './dat/53.jpg'
+    cover_path = './dat/16.jpg'
     warped_mask = face_Align(template_path, cover_path)
-    cv2.imwrite("./dat/rand_cut_result_53.jpg", warped_mask)
+    cv2.imwrite("./dat/result_16.jpg", warped_mask)
 
     # plt.subplot(111)
     # plt.imshow(warped_mask)     #　数据展示

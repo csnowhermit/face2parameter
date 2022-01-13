@@ -199,7 +199,7 @@ def correct_colours(im1, im2, landmarks1):
             im2_blur.astype(numpy.float64))
 
 
-template_path = './dat/template.png'    # 用平均脸做底图，替换五官
+template_path = './dat/avg_face.jpg'    # 用平均脸做底图，替换五官
 
 def faceswap(upload_path):
     # upload_path = "./dat/lss.jpg"
